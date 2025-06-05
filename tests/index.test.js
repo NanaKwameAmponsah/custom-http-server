@@ -1,4 +1,6 @@
 // tests/index.test.js
+//force test mode
+process.env.NODE_ENV = 'test';
 const request = require('supertest');
 const server = require('../src/index'); // points to src/index.js
 
