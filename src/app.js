@@ -1,4 +1,4 @@
-// src/app.js
+
 const http = require('http');
 const router = require('./router');
 
