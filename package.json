@@ -28,6 +28,8 @@
     "supertest": "^7.1.1"
   },
   "dependencies": {
-    "opossum": "^9.0.0"
+    "opossum": "^9.0.0",
+    "pino": "^9.7.0",
+    "pino-http": "^10.5.0"
   }
 }
