@@ -2,8 +2,12 @@
 const http = require('http');
 const router = require('./router');
 const breaker = require('./breaker');
+const logger = require('./logger');
+const pinoHttp = require('pino-http');
 function makeServer() {
-  return http.createServer(async(req, res) => {
+  const middleware = pinoHttp({ logger, genReqId: () => Date.now().toString() });
+  return http.createServer(async (req, res) => {
+    middleware(req, res);
     // Health-check endpoint
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });

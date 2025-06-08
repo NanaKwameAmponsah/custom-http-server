@@ -1,9 +1,10 @@
 const cluster       = require('cluster');
 const os            = require('os');
 const http          = require('http');
+const logger = require('./logger');
 const makeServer    = require('./app');
 const { heavyCompute } = require('./compute');
-const PORT          = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 if (process.env.NODE_ENV === 'test') {
   // ─── Test mode: export a single-server instance ───
@@ -33,7 +34,7 @@ if (process.env.NODE_ENV === 'test') {
 } else if (cluster.isMaster) {
   // ─── Production master: fork I/O vs compute workers ───
   const numCPUs = os.cpus().length;
-  console.log(`Master ${process.pid} is running`);
+  logger.info({pid: process.pid}, 'master process running');
 
   const ioCount = Math.floor(numCPUs / 2);
   for (let i = 0; i < ioCount; i++) {
@@ -45,7 +46,7 @@ if (process.env.NODE_ENV === 'test') {
 
   cluster.on('exit', (worker, code, signal) => {
     const type = (worker.env && worker.env.WORKER_TYPE) || 'io';
-    console.log(`Worker ${worker.process.pid} (${type}) died. Restarting.`);
+    logger.warn({pid: worker.process.pid, type}, 'worker died; restarting');
     cluster.fork({ WORKER_TYPE: type });
   });
 
@@ -71,13 +72,25 @@ if (process.env.NODE_ENV === 'test') {
   } else {
     server = makeServer();
   }
-
+  server.on('error', err => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error({ port: PORT, err }, 'Port already in use, shutting down');
+      process.exit(1);
+    } else {
+      // re-throw any other errors
+      throw err;
+    }
+  });
   server.listen(PORT, () => {
-    console.log(`Worker ${process.pid} [${type}] listening on port ${PORT}`);
+    logger.info({pid: process.pid, type, port: PORT}, 'worker listening');
   });
 
   process.on('SIGTERM', () => {
-    server.close(() => process.exit(0));
-    setTimeout(() => process.exit(1), 5000);
-  });
+    logger.info({ pid: process.pid, type }, 'SIGTERM received; shutting down');
+    server.close(() => {
+      logger.info({ pid: process.pid, type }, 'graceful shutdown complete');
+      process.exit(0);
+    });
+  setTimeout(() => process.exit(1), 5000);
+ });
 }
