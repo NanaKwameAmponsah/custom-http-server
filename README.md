@@ -41,7 +41,7 @@ A hand-rolled Node.js HTTP/TCP server that parses raw TCP requests, implements r
 
 ### Installation
 
-- git clone https://github.com/NanaKwameAmponsah/custom-http-server.git
+- git clone https://github.com/<YOUR_USERNAME>/custom-http-server.git
 - cd custom-http-server
 - npm install
 ## Configuration
