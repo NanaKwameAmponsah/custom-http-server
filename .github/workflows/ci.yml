@@ -46,32 +46,41 @@ jobs:
     needs: build-and-test
     runs-on: ubuntu-latest
     steps:
-      - name: Pull Docker image
-        run: docker pull ${{ secrets.DOCKER_USERNAME }}/custom-http-server:latest
-
-      - name: Start container
+      - name: Start service container
         run: |
-          docker run -d --name smoke \
+          docker run -d --rm \
+            --name custom-http-server-smoke \
             -e API_KEY=${{ secrets.API_KEY }} \
             -p 3000:3000 \
             ${{ secrets.DOCKER_USERNAME }}/custom-http-server:latest
 
       - name: Wait for /health to be healthy
         run: |
-          for i in {1..10}; do
+          for i in $(seq 1 15); do
             if curl -sf -H "x-api-key:${{ secrets.API_KEY }}" http://localhost:3000/health; then
-              echo "healthy"; exit 0
+              echo "Service healthy!"
+              break
             fi
-            echo "waiting…"; sleep 2
+            echo "Waiting for service..."
+            sleep 1
           done
-          echo "never became healthy"; exit 1
 
-      - name: Smoke-test /compute
+      - name: Smoke test GET /health
+        run: curl -sf -H "x-api-key:${{ secrets.API_KEY }}" http://localhost:3000/health
+
+      - name: Smoke test GET /compute (retry until compute worker answers)
         run: |
-          curl -sf -H "x-api-key:${{ secrets.API_KEY }}" http://localhost:3000/compute \
-            && echo "/compute OK" \
-            || (echo " /compute failed"; exit 1)
+          for i in $(seq 1 5); do
+            if curl -sf -H "x-api-key:${{ secrets.API_KEY }}" http://localhost:3000/compute; then
+              echo "Compute endpoint OK!"
+              exit 0
+            fi
+            echo "Compute route returned non-200, retrying..."
+            sleep 1
+          done
+          echo "ERROR: /compute never succeeded" >&2
+          exit 1
 
       - name: Tear down container
         if: always()
-        run: docker stop smoke
+        run: docker rm -f custom-http-server-smoke
