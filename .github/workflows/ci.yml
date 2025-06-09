@@ -42,3 +42,36 @@ jobs:
           docker tag ${{ secrets.DOCKER_USERNAME }}/custom-http-server:${{ github.sha }} \
                      ${{ secrets.DOCKER_USERNAME }}/custom-http-server:latest
           docker push ${{ secrets.DOCKER_USERNAME }}/custom-http-server:latest
+  smoke-test:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull Docker image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/custom-http-server:latest
+
+      - name: Start container
+        run: |
+          docker run -d --name smoke \
+            -e API_KEY=${{ secrets.API_KEY }} \
+            -p 3000:3000 \
+            ${{ secrets.DOCKER_USERNAME }}/custom-http-server:latest
+
+      - name: Wait for /health to be healthy
+        run: |
+          for i in {1..10}; do
+            if curl -sf -H "x-api-key:${{ secrets.API_KEY }}" http://localhost:3000/health; then
+              echo "healthy"; exit 0
+            fi
+            echo "waiting…"; sleep 2
+          done
+          echo "never became healthy"; exit 1
+
+      - name: Smoke-test /compute
+        run: |
+          curl -sf -H "x-api-key:${{ secrets.API_KEY }}" http://localhost:3000/compute \
+            && echo "/compute OK" \
+            || (echo " /compute failed"; exit 1)
+
+      - name: Tear down container
+        if: always()
+        run: docker stop smoke
