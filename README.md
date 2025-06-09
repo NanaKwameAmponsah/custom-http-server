@@ -37,7 +37,7 @@ A hand-rolled Node.js HTTP/TCP server that parses raw TCP requests, implements r
 
 - Node.js ≥ 16  
 - npm or yarn  
-- (Optional) Docker & Docker Compose
+- Docker
 
 ### Installation
 
@@ -46,7 +46,7 @@ A hand-rolled Node.js HTTP/TCP server that parses raw TCP requests, implements r
 - npm install
 ## Configuration
 
-Set the API key so that auth tests pass and production requires it:
+Set your API key so that auth tests pass and production requires it:
 
 ### macOS / Linux
 export API_KEY=supersecret123
@@ -61,8 +61,46 @@ npm test
 ## Docker
 ### build the image:
 - docker build -t custom-http-server: latest .
-- docker run -e API_KEY=supersecret123 -p 3000:3000 custom-http-server:latest
+- docker run --rm -e API_KEY=[insert your API_KEY] -p 3000:3000 custom-http-server:latest
 ## CI/CD 
-on every pull request, github actions will lint, test, build, and push your docker image
+### On every push/PR to main, GitHub Actions will:
+-Checkout, install, lint, test
 
+-Build Docker image & tag :latest
+
+-Run smoke-tests against /health and /compute
+### Make sure you’ve added these Secrets under your repo’s Settings → Secrets → Actions:
+-API_KEY 
+-DOCKER_USERNAME
+-DOCKER_PASSWORD
+## Troubleshooting
+### Port already in use (EADDRINUSE):
+-Either kill the process listening on that port or change PORT.
+- **macOS / Linux**  
+  ### Find PID listening on 3000
+  lsof -i :3000
+
+  ### Kill that PID (replace <PID>)
+  kill -9 <PID>
+- **Windows PowerShell**
+  ### Find PID
+  Get-NetTCPConnection -LocalPort 3000 | Select-Object -Expand OwningProcess
+  
+  ### Kill process
+  Stop-Process -Id <PID> -Force
+### Docker “port already allocated” errors:
+-**List running containers**:
+  -docker ps
+
+-**Stop & remove container (replace <CONTAINER_ID>)**:
+  -docker stop <CONTAINER_ID>
+  -docker rm <CONTAINER_ID>
+### unauthorized on every request errors: 
+-Make sure your shell’s API_KEY matches the one in CI/tests:
+- **macOS / Linux**:
+-   export API_KEY=supersecret123
+- **windows/ PowerShell**
+-   $env:API_KEY = 'supersecret123'
+- **Then restart the server**
+-   npm start
 
