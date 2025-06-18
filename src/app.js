@@ -41,8 +41,13 @@ function makeServer() {
       }
     }
 
-    // 5) delegate everything else to your router
-    router.handle(req, res);
+  // 5) Metrics stub (Prometheus endpoint placeholder)
+  if (req.method === 'GET' && req.url === '/metrics') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    return res.end('');
+  }
+  // 6) delegate everything else to your router
+  router.handle(req, res);
   });
 }
 
